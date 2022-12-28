@@ -1,31 +1,44 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
+var InputErr = errors.New("Input incorrect")
+var SliceErr = errors.New("Slice incorrect")
+
+func CheckCorrect1(a string) error {
+	if len(a) < 3 {
+		return InputErr
+	}
+	if (strings.Contains(a, "+") == false) && (strings.Contains(a, "-") == false) && (strings.Contains(a, "*") == false) && (strings.Contains(a, "/") == false) {
+		return InputErr
+	}
+	return nil
+}
+func CheckCorrect2(s []string) error {
+	if len(s[0]) < 3 {
+		return SliceErr
+	}
+	return nil
+}
+
 func Calc(a string, ch chan uint64) uint64 {
 	var c uint64
-	if string(a[1]) == "+" {
-		c1, _ := strconv.ParseUint(string(a[0]), 0, 64)
-		c2, _ := strconv.ParseUint(string(a[2]), 0, 64)
+	c1, _ := strconv.ParseUint(string(a[0]), 0, 64)
+	c2, _ := strconv.ParseUint(string(a[2]), 0, 64)
+	switch string(a[1]) {
+	case "+":
 		c = c1 + c2
-	}
-	if string(a[1]) == "-" {
-		c1, _ := strconv.ParseUint(string(a[0]), 0, 64)
-		c2, _ := strconv.ParseUint(string(a[2]), 0, 64)
+	case "-":
 		c = c1 - c2
-	}
-	if string(a[1]) == "*" {
-		c1, _ := strconv.ParseUint(string(a[0]), 0, 64)
-		c2, _ := strconv.ParseUint(string(a[2]), 0, 64)
+	case "*":
 		c = c1 * c2
-	}
-	if string(a[1]) == "/" {
-		c1, _ := strconv.ParseUint(string(a[0]), 0, 64)
-		c2, _ := strconv.ParseUint(string(a[2]), 0, 64)
+	case "/":
 		c = c1 / c2
 	}
 	ch <- c
@@ -33,31 +46,57 @@ func Calc(a string, ch chan uint64) uint64 {
 }
 
 func main() {
-	s := make([]string, 4)
-	res := make([]uint64, 4)
+	// st := "2+2,3+6,7*7,9/3"
+	st := "2+3,3+9,7*7,9/3,8/4,6/2"
+	s := make([]string, 1)
+	res := make([]uint64, 1)
 	ch := make(chan uint64)
-	st := "2+2,3+6,7*7,9/3"
 	j := 0
 	k := 0
-	for i := 0; i < len(st); i++ {
-		sts := st[i]
-		if string(sts) == "," {
-			s[j] = string(st[k:i])
-			j = j + 1
-			k = i + 1
+	if CheckCorrect1(st) != nil {
+		fmt.Println(CheckCorrect1(st))
+	} else {
+		for i := 0; i < len(st); i++ {
+			sts := st[i]
+			if string(sts) == "," {
+				if j == 0 {
+					s[j] = string(st[k:i])
+					j = j + 1
+					k = i + 1
+				} else {
+					s = append(s, string(st[k:i]))
+					j = j + 1
+					k = i + 1
+				}
+			}
+			if i == len(st)-1 {
+				s = append(s, string(st[k:]))
+			}
 		}
-		if i == len(st)-1 {
-			s[j] = string(st[k:])
+		fmt.Println(s) // срез условий
+		if CheckCorrect2(s) != nil {
+			fmt.Println(CheckCorrect2(s))
+		} else {
+			for i := 0; i < len(s); i++ {
+				go Calc(s[i], ch)
+				time.Sleep(10 * time.Millisecond)
+			}
+			for i := 0; i < len(s); i++ {
+				if i == 0 {
+					res[i] = <-ch
+				} else {
+					res = append(res, <-ch)
+				}
+			}
+			for i := 0; i < len(s); i++ {
+				if i == len(s)-1 {
+					fmt.Printf("%s = %d", s[i], res[i])
+				} else {
+					fmt.Printf("%s = %d, ", s[i], res[i])
+				}
+			}
 		}
+
 	}
-	fmt.Println(s) // срез условий
-	for i := 0; i < 4; i++ {
-		go Calc(s[i], ch)
-		time.Sleep(1 * time.Millisecond)
-	}
-	res[0] = <-ch
-	res[1] = <-ch
-	res[2] = <-ch
-	res[3] = <-ch
-	fmt.Println(s[0], "=", res[0], ", ", s[1], "=", res[1], ", ", s[2], "=", res[2], ", ", s[3], "=", res[3])
+
 }
